@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akines shop</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f4f6f9; color: #333; padding-bottom: 60px; }
+    
+    /* Header & Navigation */
+    header { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .logo { font-size: 22px; font-weight: bold; }
+    .cart-btn { position: relative; background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 16px; }
+    /* ข้อ 1: เลขสินค้าที่ตะกร้าขึ้นตามจำนวน */
+    .cart-badge { position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; border-radius: 50%; padding: 2px 7px; font-size: 12px; font-weight: bold; }
+
+    .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+
+    /* ข้อ 2: ปุ่มหน้าแรกที่สามารถแก้ไขลิ้งค์ได้ */
+    .hero-buttons { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+    .hero-btn { flex: 1; min-width: 120px; padding: 12px; background: #ffffff; border: 2px solid #3498db; color: #3498db; text-align: center; text-decoration: none; border-radius: 8px; font-weight: bold; transition: all 0.3s; }
+    .hero-btn:hover { background: #3498db; color: white; }
+
+    /* Products List */
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+    .product-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
+    .product-title { font-weight: bold; margin-bottom: 8px; }
+    .product-price { color: #27ae60; font-size: 18px; font-weight: bold; margin-bottom: 12px; }
+    .add-btn { background: #2ecc71; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+    /* Page Views */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Checkout Page Styles */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 50%; border-radius: 5px; }
+    
+    /* ข้อ 4: ข้อมูลการชำระเงิน */
+    .payment-info { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .copy-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: white; padding: 8px 12px; border-radius: 5px; }
+    .copy-btn { background: none; border: none; cursor: pointer; font-size: 16px; }
+    .qr-img { width: 100%; max-width: 200px; aspect-ratio: 1/1; object-fit: cover; display: block; margin: 10px auto; border: 1px solid #ddd; border-radius: 5px; }
+
+    .submit-btn { width: 100%; background: #e67e22; color: white; border: none; padding: 12px; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; }
+
+    /* Receipt & Printer Animation */
+    .printer-container { position: relative; width: 320px; margin: 40px auto; perspective: 1000px; }
+    .printer-top { width: 100%; height: 60px; background: #34495e; border-radius: 10px 10px 0 0; position: relative; z-index: 2; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-bottom: 4px solid #1a252f; }
+    .printer-slot { width: 260px; height: 6px; background: #111; margin: 45px auto 0; border-radius: 3px; }
+    
+    /* ใบเสร็จและอนิเมชั่น */
+    .receipt {
+      width: 280px; background: #fff; padding: 20px; font-family: 'Courier New', Courier, monospace;
+      margin: 0 auto; box-shadow: 0 5px 15px rgba(0,0,0,0.15); position: relative; z-index: 1;
+      top: -10px; transform: translateY(-100%); opacity: 0;
+      transition: transform 0.1s ease-out; cursor: grab; user-select: none; touch-action: none;
+    }
+    .receipt.printing {
+      animation: printOut 2.5s forwards ease-in-out;
+    }
+    @keyframes printOut {
+      0% { transform: translateY(-90%); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translateY(0%); opacity: 1; }
+    }
+    
+    .receipt-header { text-align: center; margin-bottom: 10px; }
+    .receipt-row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
+    .divider { border-top: 1px dashed #000; margin: 8px 0; }
+    .double-divider { border-top: 2px double #000; margin: 8px 0; }
+    .barcode-container { text-align: center; margin-top: 10px; }
+    .barcode-container svg { max-width: 100%; height: 50px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Akines shop</div>
+    <button class="cart-btn" onclick="showPage('cart-page')">
+      🛒 ตะกร้า <span class="cart-badge" id="cart-count">0</span>
+    </button>
+  </header>
+
+  <div class="container">
+    
+    <!-- หน้าแรก / สินค้า -->
+    <div id="home-page" class="page active">
+      <!-- ข้อ 2: เปลี่ยนเป็นปุ่มเปิดลิ้งค์แทนข้อความเดิม -->
+      <div class="hero-buttons">
+        <a href="https://example.com/work" target="_blank" id="btn-ex-work" class="hero-btn">[ ex work ]</a>
+        <a href="https://example.com/checkq" target="_blank" id="btn-check-q" class="hero-btn">[ check q ]</a>
+        <a href="https://example.com/credit" target="_blank" id="btn-credit" class="hero-btn">[ credit ]</a>
+      </div>
+
+      <h2>รายการสินค้า</h2>
+      <br>
+      <div class="products-grid" id="product-list">
+        <!-- รายการสินค้าจะแสดงที่นี่ -->
+      </div>
+    </div>
+
+    <!-- หน้าตะกร้าสินค้า -->
+    <div id="cart-page" class="page">
+      <h2>ตะกร้าสินค้าของคุณ</h2>
+      <br>
+      <div id="cart-items"></div>
+      <br>
+      <h3 id="cart-total">รวมทั้งหมด: 0 บาท</h3>
+      <br>
+      <button class="add-btn" style="width:100%; padding:12px;" onclick="showPage('checkout-page')">ไปที่หน้าชำระเงิน</button>
+      <button onclick="showPage('home-page')" style="width:100%; margin-top:10px; padding:8px; background:none; border:none; cursor:pointer;">← เลือกสินค้าเพิ่ม</button>
+    </div>
+
+    <!-- หน้าชำระเงิน -->
+    <div id="checkout-page" class="page">
+      <h2>ชำระเงิน</h2>
+      <br>
+      <form id="checkout-form" onsubmit="handleOrderSubmit(event)">
+        
+        <div class="form-group">
+          <label>ชื่อลูกค้า *</label>
+          <input type="text" id="cust-name" required placeholder="กรอกชื่อ-นามสกุล">
+        </div>
+
+        <!-- ข้อ 3: บังคับใส่ Line -->
+        <div class="form-group">
+          <label>Line (คิวอาโค้ด หรือลิ้งค์ หรือไอดี) *</label>
+          <input type="text" id="cust-line" required placeholder="ใส่ Line ID / ลิ้งค์ / QR Code">
+        </div>
+
+        <!-- ข้อ 4: รายละเอียดการโอนเงิน + ปุ่มคัดลอก + บังคับสลิป -->
+        <div class="payment-info">
+          <h3>ช่องทางชำระเงิน</h3>
+          <br>
+          <div>
+            <strong>Bank (ชื่อธนาคาร)</strong>
+            <div class="copy-row">
+              <span id="bank-num">000-000-00000</span>
+              <button type="button" class="copy-btn" onclick="copyText('000-000-00000')">📋</button>
+            </div>
+          </div>
+
+          <div>
+            <strong>True money</strong>
+            <div class="copy-row">
+              <span id="tm-num">000-000-0000</span>
+              <button type="button" class="copy-btn" onclick="copyText('000-000-0000')">📋</button>
+            </div>
+          </div>
+
+          <div>
+            <strong>โน๊ตสลิป</strong>
+            <div class="copy-row">
+              <span id="note-text">ชำระค่าสินค้า Akines shop</span>
+              <button type="button" class="copy-btn" onclick="copyText('ชำระค่าสินค้า Akines shop')">📋</button>
+            </div>
+          </div>
+
+          <!-- รูปภาพขนาด 1:1 -->
+          <img src="https://via.placeholder.com/300x300.png?text=QR+Code+1:1" alt="QR Code" class="qr-img">
+
+          <div class="form-group" style="margin-top:15px;">
+            <label>อัปโหลดสลิป *(บังคับใส่)</label>
+            <input type="file" id="slip-file" accept="image/*" required>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">[ ส่งออเดอร์ ]</button>
+      </form>
+    </div>
+
+    <!-- หน้าเครื่องปริ้นท์ใบเสร็จ -->
+    <div id="receipt-page" class="page">
+      <div class="printer-container">
+        <div class="printer-top">
+          <div class="printer-slot"></div>
+        </div>
+        
+        <!-- ใบเสร็จ -->
+        <div class="receipt" id="printable-receipt">
+          <div class="receipt-header">
+            <h3>Receipt</h3>
+            <div class="divider"></div>
+            <strong>Akines shop</strong>
+          </div>
+
+          <div class="receipt-row">
+            <span>Date</span>
+            <span id="r-date">-</span>
+          </div>
+          <div class="receipt-row">
+            <span>Time</span>
+            <span id="r-time">-</span>
+          </div>
+          <div class="receipt-row">
+            <span>Name</span>
+            <span id="r-name">-</span>
+          </div>
+
+          <div class="double-divider"></div>
+
+          <div class="receipt-row" style="font-weight:bold;">
+            <span>ชื่อสินค้า</span>
+            <span>จำนวน</span>
+            <span>ยอดรวม</span>
+          </div>
+
+          <div id="r-items-list"></div>
+
+          <div class="double-divider"></div>
+
+          <div class="receipt-row">
+            <span>Amount</span>
+            <span id="r-amount">0</span>
+          </div>
+          <div class="receipt-row" style="font-weight:bold;">
+            <span>Total</span>
+            <span id="r-total">0</span>
+          </div>
+
+          <div class="double-divider"></div>
+
+          <div class="barcode-container">
+            <svg id="barcode"></svg>
+            <div id="r-order-id" style="font-size:11px; margin-top:2px;"></div>
+          </div>
+
+          <div class="double-divider"></div>
+          <div style="text-align:center; font-size:12px; margin-top:5px;">Thank you for shopping</div>
+        </div>
+      </div>
+      <p style="text-align:center; color:#777; font-size:14px;">(ใช้นิ้ว/เมาส์ลากดึงใบเสร็จลงมาได้เลย)</p>
+      <br>
+      <button onclick="resetApp()" style="display:block; margin:0 auto; padding:8px 16px;">กลับไปหน้าแรก</button>
+    </div>
+
+  </div>
+
+  <script>
+    // ข้อมูลสินค้าตัวอย่าง (ฟังก์ชันเดิม)
+    const products = [
+      { id: 1, name: 'สินค้า A', price: 99 },
+      { id: 2, name: 'สินค้า B', price: 99 }
+    ];
+
+    let cart = [];
+
+    // เริ่มต้นระบบ Render สินค้า
+    function init() {
+      const pList = document.getElementById('product-list');
+      pList.innerHTML = products.map(p => `
+        <div class="product-card">
+          <div>
+            <div class="product-title">${p.name}</div>
+            <div class="product-price">${p.price} บาท</div>
+          </div>
+          <button class="add-btn" onclick="addToCart(${p.id})">เพิ่มลงตะกร้า</button>
+        </div>
+      `).join('');
+    }
+
+    // ฟังก์ชันเพิ่มลงตะกร้า + ข้อ 1: อัปเดตจำนวนสินค้าที่ปุ่มตะกร้า
+    function addToCart(pId) {
+      const prod = products.find(p => p.id === pId);
+      const item = cart.find(c => c.id === pId);
+      if(item) {
+        item.qty += 1;
+      } else {
+        cart.push({ ...prod, qty: 1 });
+      }
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      // ข้อ 1: รวมจำนวนชิ้นทั้งหมดแสดงที่ Badge
+      const totalCount = cart.reduce((sum, item) => sum + item.qty, 0);
+      document.getElementById('cart-count').innerText = totalCount;
+
+      // แสดงรายการในหน้าตะกร้า
+      const cartItemsDiv = document.getElementById('cart-items');
+      if(cart.length === 0) {
+        cartItemsDiv.innerHTML = '<p>ไม่มีสินค้าในตะกร้า</p>';
+      } else {
+        cartItemsDiv.innerHTML = cart.map(item => `
+          <div class="receipt-row" style="background:white; padding:10px; margin-bottom:5px; border-radius:5px;">
+            <span>${item.name} (${item.price}B)</span>
+            <span>x${item.qty}</span>
+            <span>${item.price * item.qty} บาท</span>
+          </div>
+        `).join('');
+      }
+
+      const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      document.getElementById('cart-total').innerText = `รวมทั้งหมด: ${totalPrice} บาท`;
+    }
+
+    // ฟังก์ชันสลับหน้า
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    }
+
+    // คัดลอกข้อความ
+    function copyText(text) {
+      navigator.clipboard.writeText(text);
+      alert('คัดลอกเรียบร้อยแล้ว: ' + text);
+    }
+
+    // เมื่อกดส่งออเดอร์
+    function handleOrderSubmit(e) {
+      e.preventDefault();
+      if(cart.length === 0) {
+        alert('กรุณาเลือกสินค้าอย่างน้อย 1 ชิ้น');
+        return;
+      }
+
+      // ดึงข้อมูล
+      const name = document.getElementById('cust-name').value;
+      const now = new Date();
+      
+      // วัน/เดือน/ปี
+      const dateStr = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+      // เวลา (นับวินาที)
+      const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+      
+      const orderId = 'AK' + Date.now();
+      const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
+      const totalPrice = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+      // ใส่ข้อมูลลงใบเสร็จ
+      document.getElementById('r-date').innerText = dateStr;
+      document.getElementById('r-time').innerText = timeStr;
+      document.getElementById('r-name').innerText = name;
+      document.getElementById('r-amount').innerText = totalQty;
+      document.getElementById('r-total').innerText = totalPrice;
+      document.getElementById('r-order-id').innerText = orderId;
+
+      // รายการสินค้าในใบเสร็จ
+      document.getElementById('r-items-list').innerHTML = cart.map(item => `
+        <div class="receipt-row">
+          <span>${item.name}</span>
+          <span>${item.qty}</span>
+          <span>${item.price * item.qty}</span>
+        </div>
+      `).join('');
+
+      // สร้าง บาร์โค้ด
+      JsBarcode("#barcode", orderId, {
+        format: "CODE128",
+        displayValue: false,
+        height: 40,
+        margin: 0
+      });
+
+      // ย้ายไปหน้าใบเสร็จ & เล่นอนิเมชั่นปริ้นท์
+      showPage('receipt-page');
+      const receiptEl = document.getElementById('printable-receipt');
+      receiptEl.classList.remove('printing');
+      void receiptEl.offsetWidth; // trigger reflow
+      receiptEl.classList.add('printing');
+
+      // เปิดระบบลากใบเสร็จด้วยมือ/นิ้ว
+      enableDragReceipt(receiptEl);
+    }
+
+    // ระบบลากใบเสร็จออกจากเครื่องปริ้นท์ (Touch/Mouse Drag)
+    function enableDragReceipt(el) {
+      let startY = 0;
+      let currentY = 0;
+      let isDragging = false;
+
+      function onStart(e) {
+        isDragging = true;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        el.style.transition = 'none';
+      }
+
+      function onMove(e) {
+        if (!isDragging) return;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        const deltaY = y - startY;
+        if (deltaY > 0) { // ลากลงได้อย่างเดียว
+          currentY = deltaY;
+          el.style.transform = `translateY(${currentY}px)`;
+        }
+      }
+
+      function onEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        el.style.transition = 'transform 0.3s ease-out';
+        if (currentY > 80) { // ถ้าลากยาวพอ ให้หลุดออกเลย
+          el.style.transform = 'translateY(120px)';
+        } else {
+          el.style.transform = 'translateY(0px)';
+        }
+      }
+
+      el.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+
+      el.addEventListener('touchstart', onStart);
+      window.addEventListener('touchmove', onMove);
+      window.addEventListener('touchend', onEnd);
+    }
+
+    function resetApp() {
+      cart = [];
+      updateCartUI();
+      document.getElementById('checkout-form').reset();
+      showPage('home-page');
+    }
+
+    // เรียกทำงานเมื่อโหลดหน้า
+    init();
+  </script>
+</body>
+</html>
