@@ -2934,3 +2934,330 @@ renderCart();
 
 </body>
 </html>
+/* ==================================================
+   ADMIN FLOATING NAV SETTINGS
+================================================== */
+
+function openFloatingNavSettings() {
+
+    /*
+       ป้องกันคนทั่วไป
+    */
+
+    if (
+        typeof adminLoggedIn !==
+        "undefined" &&
+        !adminLoggedIn
+    ) {
+
+        alert(
+            "เฉพาะแอดมินเท่านั้น ♡"
+        );
+
+        return;
+
+    }
+
+
+    renderFloatingNavAdmin();
+
+}
+
+
+/*
+   แสดงหน้าจัดการ
+*/
+
+function renderFloatingNavAdmin() {
+
+    let listHTML = "";
+
+
+    floatingNavItems.forEach(
+        (item, index) => {
+
+            listHTML += `
+
+                <div
+                    class="floating-nav-admin-item"
+                >
+
+                    <input
+                        value="${item.icon}"
+                        placeholder="ไอคอน"
+                        onchange="
+                            updateFloatingNavIcon(
+                                ${index},
+                                this.value
+                            )
+                        "
+                        style="
+                            max-width:55px;
+                            text-align:center;
+                        "
+                    >
+
+
+                    <input
+                        value="${item.label}"
+                        placeholder="ชื่อแถบ"
+                        onchange="
+                            updateFloatingNavLabel(
+                                ${index},
+                                this.value
+                            )
+                        "
+                    >
+
+
+                    <button
+                        onclick="
+                            moveFloatingNav(
+                                ${index},
+                                -1
+                            )
+                        "
+                        title="เลื่อนซ้าย"
+                    >
+                        ◀
+                    </button>
+
+
+                    <button
+                        onclick="
+                            moveFloatingNav(
+                                ${index},
+                                1
+                            )
+                        "
+                        title="เลื่อนขวา"
+                    >
+                        ▶
+                    </button>
+
+
+                    <button
+                        onclick="
+                            deleteFloatingNav(
+                                ${index}
+                            )
+                        "
+                        title="ลบ"
+                    >
+                        🗑️
+                    </button>
+
+                </div>
+
+            `;
+
+        }
+    );
+
+
+    showModal(`
+
+        <div class="modal-title">
+
+            ☰ ตั้งค่าแถบนำทาง
+
+        </div>
+
+
+        <p
+            style="
+                color:#b9a5ac;
+                font-size:13px;
+                line-height:1.6;
+            "
+        >
+
+            แถบด้านล่างที่ผู้เข้าชมเว็บไซต์
+            จะมองเห็น สามารถเพิ่ม ลบ
+            เปลี่ยนชื่อ และจัดเรียงได้จากตรงนี้
+
+        </p>
+
+
+        <div
+            class="floating-nav-admin-list"
+        >
+
+            ${listHTML}
+
+        </div>
+
+
+        <button
+            class="floating-nav-admin-add"
+            onclick="
+                addFloatingNav()
+            "
+        >
+
+            ＋ เพิ่มแถบใหม่
+
+        </button>
+
+
+        <button
+            class="floating-nav-admin-save"
+            onclick="
+                saveFloatingNav();
+                renderFloatingNav();
+                closeModal();
+                alert('บันทึกแถบนำทางแล้ว ♡');
+            "
+            style="margin-top:10px;"
+        >
+
+            💗 บันทึกการตั้งค่า
+
+        </button>
+
+
+        <button
+            class="modal-button cancel-button"
+            onclick="
+                closeModal()
+            "
+        >
+
+            ปิด
+
+        </button>
+
+    `);
+
+}
+
+
+/*
+   เปลี่ยนชื่อ
+*/
+
+function updateFloatingNavLabel(
+    index,
+    value
+) {
+
+    floatingNavItems[index].label =
+        value;
+
+}
+
+
+/*
+   เปลี่ยนไอคอน
+*/
+
+function updateFloatingNavIcon(
+    index,
+    value
+) {
+
+    floatingNavItems[index].icon =
+        value;
+
+}
+
+
+/*
+   ลบแถบ
+*/
+
+function deleteFloatingNav(
+    index
+) {
+
+    if (
+        floatingNavItems.length <= 1
+    ) {
+
+        alert(
+            "ต้องมีอย่างน้อย 1 แถบ"
+        );
+
+        return;
+
+    }
+
+
+    floatingNavItems.splice(
+        index,
+        1
+    );
+
+
+    renderFloatingNavAdmin();
+
+}
+
+
+/*
+   เพิ่มแถบ
+*/
+
+function addFloatingNav() {
+
+    floatingNavItems.push({
+
+        id:
+            "custom-" +
+            Date.now(),
+
+        icon: "♡",
+
+        label: "แถบใหม่",
+
+        type: "custom",
+
+        url: ""
+
+    });
+
+
+    renderFloatingNavAdmin();
+
+}
+
+
+/*
+   จัดเรียง
+*/
+
+function moveFloatingNav(
+    index,
+    direction
+) {
+
+    const newIndex =
+        index + direction;
+
+
+    if (
+        newIndex < 0 ||
+        newIndex >=
+        floatingNavItems.length
+    ) {
+
+        return;
+
+    }
+
+
+    const temp =
+        floatingNavItems[index];
+
+
+    floatingNavItems[index] =
+        floatingNavItems[newIndex];
+
+
+    floatingNavItems[newIndex] =
+        temp;
+
+
+    renderFloatingNavAdmin();
+
+}
